@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-// const uri = "mongodb://localhost:27017";
+const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -31,10 +31,18 @@ async function run() {
 
     const productsCollection = client.db("urbanAuraDb").collection("products");
 
-    // all products api
+    // all products and category wise products api
     app.get("/products", async (req, res) => {
-      const result = await productsCollection.find().toArray();
-      res.send(result);
+      const category = req.query.category;
+
+      if (!category) {
+        const result = await productsCollection.find().toArray();
+        res.send(result);
+      } else {
+        const query = { category: category };
+        const result = await productsCollection.find(query).toArray();
+        res.send(result);
+      }
     });
 
     // single product api
