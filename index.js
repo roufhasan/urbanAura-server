@@ -32,7 +32,9 @@ async function run() {
     const productsCollection = client.db("urbanAuraDb").collection("products");
     const cartsCollection = client.db("urbanAuraDb").collection("carts");
 
-    // all products and category wise products api
+    // ***===> Products API's <===***
+
+    // Get all products and category wise products
     app.get("/products", async (req, res) => {
       const category = req.query.category;
 
@@ -46,7 +48,7 @@ async function run() {
       }
     });
 
-    // single product api
+    // Get a single product
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -54,7 +56,9 @@ async function run() {
       res.send(result);
     });
 
-    // user cart items api
+    // ***===> Cart API's <===***
+
+    // Get user cart items
     app.get("/cart", async (req, res) => {
       const userEmail = req.query.userEmail;
 
@@ -64,6 +68,13 @@ async function run() {
 
       const query = { user_email: userEmail };
       const result = await cartsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Add a item to the cart
+    app.post("/cart", async (req, res) => {
+      const item = req.body;
+      const result = await cartsCollection.insertOne(item);
       res.send(result);
     });
 
