@@ -72,10 +72,27 @@ async function run() {
     });
 
     // Add a item to the cart
-    app.post("/cart", async (req, res) => {
+    app.put("/cart", async (req, res) => {
       const item = req.body;
-      const result = await cartsCollection.insertOne(item);
-      res.send(result);
+      const { product_id, user_email, quantity } = item;
+
+      const existingItem = await cartsCollection.findOne({
+        product_id,
+        user_email,
+      });
+
+      if (existingItem) {
+        const newQuantity = existingItem.quantity + quantity;
+        const filter = { product_id, user_email };
+        const updateDoc = {
+          $set: { quantity: newQuantity },
+        };
+        const result = await cartsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } else {
+        const result = await cartsCollection.insertOne(item);
+        res.send(result);
+      }
     });
 
     // Delete a item from the cart
