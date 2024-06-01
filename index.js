@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-// const uri = "mongodb://localhost:27017";
+const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -75,6 +75,14 @@ async function run() {
     app.post("/cart", async (req, res) => {
       const item = req.body;
       const result = await cartsCollection.insertOne(item);
+      res.send(result);
+    });
+
+    // Delete a item from the cart
+    app.delete("/cart", async (req, res) => {
+      const { id, email } = req.body;
+      const query = { _id: new ObjectId(id), user_email: email };
+      const result = await cartsCollection.deleteOne(query);
       res.send(result);
     });
 
