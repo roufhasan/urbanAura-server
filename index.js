@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-const uri = "mongodb://localhost:27017";
+// const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -71,7 +71,7 @@ async function run() {
       res.send(result);
     });
 
-    // Add a item to the cart
+    // Add a item to the cart or update the quantity if exists
     app.put("/cart", async (req, res) => {
       const item = req.body;
       const { product_id, user_email, quantity } = item;
@@ -93,6 +93,16 @@ async function run() {
         const result = await cartsCollection.insertOne(item);
         res.send(result);
       }
+    });
+
+    // Update the quantity of a cart item
+    app.patch("/cart_quantity", async (req, res) => {
+      const { id, user_email, quantity } = req.body;
+
+      const filter = { _id: new ObjectId(id), user_email };
+      const updateDoc = { $set: { quantity: quantity } };
+      const result = await cartsCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
     // Delete a item from the cart
