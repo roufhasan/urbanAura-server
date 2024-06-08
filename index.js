@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-// const uri = "mongodb://localhost:27017";
+const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -31,8 +31,11 @@ async function run() {
 
     const productsCollection = client.db("urbanAuraDb").collection("products");
     const cartsCollection = client.db("urbanAuraDb").collection("carts");
+    const favouritesCollection = client
+      .db("urbanAuraDb")
+      .collection("favourites");
 
-    // ***===> Products API's <===***
+    // ***===> Products Collection API's <===***
 
     // Get all products and category wise products
     app.get("/products", async (req, res) => {
@@ -56,7 +59,7 @@ async function run() {
       res.send(result);
     });
 
-    // ***===> Cart API's <===***
+    // ***===> Cart Collection API's <===***
 
     // Get user cart items
     app.get("/cart", async (req, res) => {
@@ -110,6 +113,19 @@ async function run() {
       const { id, email } = req.body;
       const query = { _id: new ObjectId(id), user_email: email };
       const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // ***===> Favourite Collection API's <===***
+    app.get("/favourite", async (req, res) => {
+      const userEmail = req.query.userEmail;
+
+      if (!userEmail) {
+        return res.status(400).json({ message: "user email is required" });
+      }
+
+      const query = { user_email: userEmail };
+      const result = await favouritesCollection.find(query).toArray();
       res.send(result);
     });
 
