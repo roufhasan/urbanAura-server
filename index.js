@@ -129,6 +129,24 @@ async function run() {
       res.send(result);
     });
 
+    // Delete a item from favourite list
+    app.delete("/favourite", async (req, res) => {
+      try {
+        const { id } = req.body;
+
+        if (!id) {
+          return res.status(400).json({ error: "id is required!" });
+        }
+
+        const query = { _id: new ObjectId(id) };
+        const result = await favouritesCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("error deleting favourite item:", error);
+        res.status(500).json({ error: "internal server error" });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
