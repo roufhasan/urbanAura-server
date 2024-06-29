@@ -117,6 +117,8 @@ async function run() {
     });
 
     // ***===> Favourite Collection API's <===***
+
+    // Get favourite items of a user
     app.get("/favourite", async (req, res) => {
       const userEmail = req.query.userEmail;
 
@@ -126,6 +128,22 @@ async function run() {
 
       const query = { user_email: userEmail };
       const result = await favouritesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Save a favourite item only one time
+    app.post("/favourite", async (req, res) => {
+      const item = req.body;
+      const query = {
+        user_email: item.user_email,
+        product_id: item.product_id,
+      };
+      const existingItem = await favouritesCollection.findOne(query);
+
+      if (existingItem) {
+        return res.send({ message: "product already exists" });
+      }
+      const result = await favouritesCollection.insertOne(item);
       res.send(result);
     });
 
