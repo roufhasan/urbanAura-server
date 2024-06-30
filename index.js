@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-const uri = "mongodb://localhost:27017";
+// const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -150,13 +150,12 @@ async function run() {
     // Delete a item from favourite list
     app.delete("/favourite", async (req, res) => {
       try {
-        const { id } = req.body;
-
-        if (!id) {
-          return res.status(400).json({ error: "id is required!" });
+        const { product_id, user_email } = req.body;
+        if (!product_id || !user_email) {
+          return res.status(400).json({ error: "id and email is required!" });
         }
 
-        const query = { _id: new ObjectId(id) };
+        const query = { product_id: product_id, user_email: user_email };
         const result = await favouritesCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
