@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-// const uri = "mongodb://localhost:27017";
+const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -56,6 +56,20 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Get products by search
+    app.get("/search/:key", async (req, res) => {
+      const searchValue = req.params.key;
+      const query = {
+        $or: [
+          { category: { $regex: searchValue, $options: "i" } },
+          { title: { $regex: searchValue, $options: "i" } },
+          { sub_title: { $regex: searchValue, $options: "i" } },
+        ],
+      };
+      const result = await productsCollection.find(query).toArray();
       res.send(result);
     });
 
