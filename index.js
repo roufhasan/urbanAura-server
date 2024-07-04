@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
+const stripe = require("stripe")(process.env.PAYMETN_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -10,10 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-const uri = "mongodb://localhost:27017";
+// const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -34,6 +35,7 @@ async function run() {
     const favouritesCollection = client
       .db("urbanAuraDb")
       .collection("favourites");
+    const paymentCollection = client.db("urbanAuraDb").collection("payments");
 
     // ***===> Products Collection API's <===***
 
@@ -175,6 +177,44 @@ async function run() {
       } catch (error) {
         console.error("error deleting favourite item:", error);
         res.status(500).json({ error: "internal server error" });
+      }
+    });
+
+    // create payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // ***===> Payment Collection API's <===***
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      try {
+        const insertResult = await paymentCollection.insertOne(payment);
+
+        if (insertResult.insertedId) {
+          const itemIds = payment.items.map((item) => item._id);
+          const deleteResult = await cartsCollection.deleteMany({
+            _id: { $in: itemIds.map((id) => new ObjectId(id)) },
+          });
+
+          res.send({ insertResult, deleteResult });
+        } else {
+          throw new Error("Failed to insert payment");
+        }
+      } catch (err) {
+        console.log(err);
+        res
+          .status(500)
+          .send({ error: "An error occurred during the payment process" });
       }
     });
 
