@@ -180,13 +180,13 @@ async function run() {
       }
     });
 
-    // create payment intent
+    // Stripe Payment Intent API
     app.post("/create-payment-intent", async (req, res) => {
       try {
         const { price } = req.body;
 
         if (!price || typeof price !== "number" || price <= 0) {
-          return res.status(400).json({ error: "Invalid price" });
+          return res.status(400).json({ error: "invalid price" });
         }
 
         const amount = price * 100;
@@ -205,6 +205,26 @@ async function run() {
     });
 
     // ***===> Payment Collection API's <===***
+
+    // Get all payments of an user
+    app.get("/payments", async (req, res) => {
+      try {
+        const { email } = req.query;
+
+        if (!email) {
+          return res.status(400).json({ error: "invalid email" });
+        }
+
+        const query = { email: email };
+        const result = await paymentCollection.find(query).toArray();
+        res.send(result);
+      } catch (err) {
+        console.error("error getting payments of a user :", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // Save successful payments and delete the cart items
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       try {
