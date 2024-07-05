@@ -182,16 +182,26 @@ async function run() {
 
     // create payment intent
     app.post("/create-payment-intent", async (req, res) => {
-      const { price } = req.body;
-      const amount = price * 100;
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+      try {
+        const { price } = req.body;
+
+        if (!price || typeof price !== "number" || price <= 0) {
+          return res.status(400).json({ error: "Invalid price" });
+        }
+
+        const amount = price * 100;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (err) {
+        console.error("Error creating payment intent:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // ***===> Payment Collection API's <===***
@@ -211,7 +221,6 @@ async function run() {
           throw new Error("Failed to insert payment");
         }
       } catch (err) {
-        console.log(err);
         res
           .status(500)
           .send({ error: "An error occurred during the payment process" });
