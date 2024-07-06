@@ -35,7 +35,8 @@ async function run() {
     const favouritesCollection = client
       .db("urbanAuraDb")
       .collection("favourites");
-    const paymentCollection = client.db("urbanAuraDb").collection("payments");
+    const paymentsCollection = client.db("urbanAuraDb").collection("payments");
+    const reviewsCollection = client.db("urbanAuraDb").collection("reviews");
 
     // ***===> Products Collection API's <===***
 
@@ -180,6 +181,34 @@ async function run() {
       }
     });
 
+    // ***===> Review Collection API's <===***
+
+    // Get all reviews
+    app.get("/reviews", async (req, res) => {
+      try {
+        const result = await reviewsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    // Post A Review of a user
+    app.post("/review", async (req, res) => {
+      try {
+        const review = req.body;
+        if (!review) {
+          return res.status(400).json({ error: "review data is required" });
+        }
+        const result = await reviewsCollection.insertOne(review);
+        res.send(result);
+      } catch (err) {
+        console.error("Error posting review:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
     // Stripe Payment Intent API
     app.post("/create-payment-intent", async (req, res) => {
       try {
@@ -189,7 +218,7 @@ async function run() {
           return res.status(400).json({ error: "invalid price" });
         }
 
-        const amount = price * 100;
+        const amount = Math.round(price * 100);
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
           currency: "usd",
@@ -216,7 +245,7 @@ async function run() {
         }
 
         const query = { email: email };
-        const result = await paymentCollection.find(query).toArray();
+        const result = await paymentsCollection.find(query).toArray();
         res.send(result);
       } catch (err) {
         console.error("error getting payments of a user :", err);
@@ -228,7 +257,7 @@ async function run() {
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       try {
-        const insertResult = await paymentCollection.insertOne(payment);
+        const insertResult = await paymentsCollection.insertOne(payment);
 
         if (insertResult.insertedId) {
           const itemIds = payment.items.map((item) => item._id);
