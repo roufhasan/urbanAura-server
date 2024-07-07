@@ -183,10 +183,18 @@ async function run() {
 
     // ***===> Review Collection API's <===***
 
-    // Get all reviews
+    // Get all reviews of a product
     app.get("/reviews", async (req, res) => {
       try {
-        const result = await reviewsCollection.find().toArray();
+        const { product_id } = req.query;
+        if (!product_id) {
+          return res.status(400).json({ error: "product_id is required" });
+        }
+        const query = { product_id: product_id };
+        const result = await reviewsCollection
+          .find(query)
+          .sort({ date: -1 })
+          .toArray();
         res.send(result);
       } catch (error) {
         console.error("Error fetching reviews:", error);
@@ -206,6 +214,26 @@ async function run() {
       } catch (err) {
         console.error("Error posting review:", err);
         res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // Delete a review from a product
+    app.delete("/review", async (req, res) => {
+      try {
+        const { product_id, email } = req.body;
+
+        if (!product_id || !email) {
+          return res
+            .status(400)
+            .json({ error: "product_id and user data is required" });
+        }
+
+        const query = { product_id: product_id, email: email };
+        const result = await reviewsCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting reviews:", error);
+        res.status(500).send({ error: "Internal Server Error" });
       }
     });
 
