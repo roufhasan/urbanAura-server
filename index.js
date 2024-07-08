@@ -273,7 +273,10 @@ async function run() {
         }
 
         const query = { email: email };
-        const result = await paymentsCollection.find(query).toArray();
+        const result = await paymentsCollection
+          .find(query)
+          .sort({ date: -1 })
+          .toArray();
         res.send(result);
       } catch (err) {
         console.error("error getting payments of a user :", err);
