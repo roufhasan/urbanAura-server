@@ -57,9 +57,26 @@ async function run() {
     // Get a single product
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
+
+      // Validate ObjectId
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: "Invalid product ID" });
+      }
+
       const query = { _id: new ObjectId(id) };
-      const result = await productsCollection.findOne(query);
-      res.send(result);
+
+      try {
+        const result = await productsCollection.findOne(query);
+
+        if (!result) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // Get products by search
