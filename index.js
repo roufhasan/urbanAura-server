@@ -42,15 +42,30 @@ async function run() {
 
     // Get all products and category wise products
     app.get("/products", async (req, res) => {
-      const category = req.query.category;
+      try {
+        const category = req.query.category;
+        const sortBy = req.query.sortBy;
+        const query = category ? { category: category } : {};
 
-      if (!category) {
-        const result = await productsCollection.find().toArray();
-        res.send(result);
-      } else {
-        const query = { category: category };
-        const result = await productsCollection.find(query).toArray();
-        res.send(result);
+        if (sortBy === "asc") {
+          const result = await productsCollection
+            .find(query)
+            .sort({ _id: 1 })
+            .toArray();
+          return res.send(result);
+        } else if (sortBy === "desc") {
+          const result = await productsCollection
+            .find(query)
+            .sort({ _id: -1 })
+            .toArray();
+          return res.send(result);
+        } else {
+          const result = await productsCollection.find(query).toArray();
+          return res.send(result);
+        }
+      } catch (error) {
+        console.error("Error retrieving products:", error);
+        res.status(500).send("Internal Server Error");
       }
     });
 
@@ -303,8 +318,8 @@ async function run() {
 
     // Save successful payments and delete the cart items
     app.post("/payments", async (req, res) => {
-      const payment = req.body;
       try {
+        const payment = req.body;
         const insertResult = await paymentsCollection.insertOne(payment);
 
         if (insertResult.insertedId) {
