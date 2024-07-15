@@ -11,10 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Compass Connection URL
-// const uri = "mongodb://localhost:27017";
+const uri = "mongodb://localhost:27017";
 
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -321,6 +321,39 @@ async function run() {
         res
           .status(500)
           .send({ error: "An error occurred during the payment process" });
+      }
+    });
+
+    // ***===> Admin's API's <===***
+    // Get all payments
+    app.get("/admin/payments", async (req, res) => {
+      try {
+        const result = await paymentsCollection
+          .find()
+          .sort({ date: -1 })
+          .toArray();
+        res.send(result);
+      } catch (err) {
+        console.log("Error getting all payments:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // Update payment order status
+    app.put("/admin/payments/:orderId/status", async (req, res) => {
+      try {
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        const result = await paymentsCollection.updateOne(
+          { _id: new ObjectId(orderId) },
+          { $set: { status: status } }
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating order status:", error);
+        res.status(500).json({ message: "Server error" });
       }
     });
 
