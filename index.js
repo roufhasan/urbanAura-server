@@ -69,6 +69,20 @@ async function run() {
       }
     });
 
+    // Get products by search
+    app.get("/search/:key", async (req, res) => {
+      const searchValue = req.params.key;
+      const query = {
+        $or: [
+          { category: { $regex: searchValue, $options: "i" } },
+          { title: { $regex: searchValue, $options: "i" } },
+          { sub_title: { $regex: searchValue, $options: "i" } },
+        ],
+      };
+      const result = await productsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Get a single product
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -94,18 +108,17 @@ async function run() {
       }
     });
 
-    // Get products by search
-    app.get("/search/:key", async (req, res) => {
-      const searchValue = req.params.key;
-      const query = {
-        $or: [
-          { category: { $regex: searchValue, $options: "i" } },
-          { title: { $regex: searchValue, $options: "i" } },
-          { sub_title: { $regex: searchValue, $options: "i" } },
-        ],
-      };
-      const result = await productsCollection.find(query).toArray();
-      res.send(result);
+    // Delete a single product from the products
+    app.delete("/products/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await productsCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.error("Error deleting product:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // ***===> Cart Collection API's <===***
