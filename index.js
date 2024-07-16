@@ -108,6 +108,22 @@ async function run() {
       }
     });
 
+    // Update a single product
+    app.put("/products/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedProduct = req.body;
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedProduct }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error("Error updating product:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
     // Delete a single product from the products
     app.delete("/products/:id", async (req, res) => {
       try {
