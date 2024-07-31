@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const stripe = require("stripe")(process.env.PAYMETN_SECRET_KEY);
@@ -9,6 +10,27 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
+
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorized access" });
+  }
+  // bearer token
+  const token = authorization.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res
+        .status(401)
+        .send({ error: true, message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 // MongoDB Compass Connection URL
 const uri = "mongodb://localhost:27017";
@@ -37,6 +59,35 @@ async function run() {
       .collection("favourites");
     const paymentsCollection = client.db("urbanAuraDb").collection("payments");
     const reviewsCollection = client.db("urbanAuraDb").collection("reviews");
+
+    // ***===> JWT Token API <===***
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    // ***===> User API <===***
+    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+      try {
+        const email = req.params.email;
+        const decodedEmail = req.decoded.email;
+
+        if (decodedEmail !== email) {
+          return res.send({ admin: false });
+        }
+
+        const adminEmail = "example@demo.com"; // TODO: change the email
+        const isAdmin = email === adminEmail;
+
+        res.send({ admin: isAdmin });
+      } catch (err) {
+        console.log("error getting users:", err);
+        res.status(500).send("Internal Server Error");
+      }
+    });
 
     // ***===> Products Collection API's <===***
 
@@ -154,12 +205,19 @@ async function run() {
     // ***===> Cart Collection API's <===***
 
     // Get user cart items
-    app.get("/cart", async (req, res) => {
+    app.get("/cart", verifyJWT, async (req, res) => {
       try {
         const userEmail = req.query.userEmail;
 
         if (!userEmail) {
           return res.status(400).json({ message: "user email is required!" });
+        }
+
+        const decodedEmail = req.decoded.email;
+        if (userEmail !== decodedEmail) {
+          return res
+            .status(403)
+            .send({ error: true, message: "forbidden access" });
         }
 
         const query = { user_email: userEmail };
@@ -203,9 +261,9 @@ async function run() {
     // Update the quantity of a cart item
     app.patch("/cart_quantity", async (req, res) => {
       try {
-        const { id, user_email, quantity } = req.body;
+        const { product_id, user_email, quantity } = req.body;
 
-        const filter = { _id: new ObjectId(id), user_email };
+        const filter = { product_id: product_id, user_email };
         const updateDoc = { $set: { quantity: quantity } };
         const result = await cartsCollection.updateOne(filter, updateDoc);
         res.send(result);
@@ -218,8 +276,8 @@ async function run() {
     // Delete a item from the cart
     app.delete("/cart", async (req, res) => {
       try {
-        const { id, email } = req.body;
-        const query = { _id: new ObjectId(id), user_email: email };
+        const { product_id, email } = req.body;
+        const query = { product_id: product_id, user_email: email };
         const result = await cartsCollection.deleteOne(query);
         res.send(result);
       } catch (err) {
@@ -231,12 +289,19 @@ async function run() {
     // ***===> Favourite Collection API's <===***
 
     // Get favourite items of a user
-    app.get("/favourite", async (req, res) => {
+    app.get("/favourite", verifyJWT, async (req, res) => {
       try {
         const userEmail = req.query.userEmail;
 
         if (!userEmail) {
           return res.status(400).json({ message: "user email is required" });
+        }
+
+        const decodedEmail = req.decoded.email;
+        if (userEmail !== decodedEmail) {
+          return res
+            .status(403)
+            .send({ error: true, message: "forbidden access" });
         }
 
         const query = { user_email: userEmail };
@@ -369,12 +434,19 @@ async function run() {
     // ***===> Payment Collection API's <===***
 
     // Get all payments of an user
-    app.get("/payments", async (req, res) => {
+    app.get("/payments", verifyJWT, async (req, res) => {
       try {
         const { email } = req.query;
 
         if (!email) {
           return res.status(400).json({ error: "invalid email" });
+        }
+
+        const decodedEmail = req.decoded.email;
+        if (email !== decodedEmail) {
+          return res
+            .status(403)
+            .send({ error: true, message: "forbidden access" });
         }
 
         const query = { email: email };
