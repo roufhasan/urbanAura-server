@@ -64,10 +64,22 @@ async function run() {
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "30d",
       });
       res.send({ token });
     });
+
+    // verify admin middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const adminEmail = "arthurmorgan@red.com";
+      if (email !== adminEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
 
     // ***===> User API <===***
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
@@ -79,7 +91,7 @@ async function run() {
           return res.send({ admin: false });
         }
 
-        const adminEmail = "example@demo.com"; // TODO: change the email
+        const adminEmail = "arthurmorgan@red.com"; // TODO: change the email
         const isAdmin = email === adminEmail;
 
         res.send({ admin: isAdmin });
@@ -485,7 +497,7 @@ async function run() {
 
     // ***===> Admin's API's <===***
     // Get all payments
-    app.get("/admin/payments", async (req, res) => {
+    app.get("/admin/payments", verifyJWT, verifyAdmin, async (req, res) => {
       try {
         const result = await paymentsCollection
           .find()
@@ -499,22 +511,27 @@ async function run() {
     });
 
     // Update payment order status
-    app.put("/admin/payments/:orderId/status", async (req, res) => {
-      try {
-        const { orderId } = req.params;
-        const { status } = req.body;
+    app.put(
+      "/admin/payments/:orderId/status",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const { orderId } = req.params;
+          const { status } = req.body;
 
-        const result = await paymentsCollection.updateOne(
-          { _id: new ObjectId(orderId) },
-          { $set: { status: status } }
-        );
+          const result = await paymentsCollection.updateOne(
+            { _id: new ObjectId(orderId) },
+            { $set: { status: status } }
+          );
 
-        res.send(result);
-      } catch (err) {
-        console.lg("error updating order status:", err);
-        res.status(500).json({ message: "Internal Server Error" });
+          res.send(result);
+        } catch (err) {
+          console.lg("error updating order status:", err);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
       }
-    });
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
