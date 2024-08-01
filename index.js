@@ -6,31 +6,11 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const stripe = require("stripe")(process.env.PAYMETN_SECRET_KEY);
 const port = process.env.PORT || 5000;
+const verifyJWT = require("./middlewares/verifyJWT");
 
 // middleware
 app.use(cors());
 app.use(express.json());
-
-const verifyJWT = (req, res, next) => {
-  const authorization = req.headers.authorization;
-  if (!authorization) {
-    return res
-      .status(401)
-      .send({ error: true, message: "unauthorized access" });
-  }
-  // bearer token
-  const token = authorization.split(" ")[1];
-
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res
-        .status(401)
-        .send({ error: true, message: "unauthorized access" });
-    }
-    req.decoded = decoded;
-    next();
-  });
-};
 
 // MongoDB Compass Connection URL
 const uri = "mongodb://localhost:27017";
@@ -52,13 +32,30 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const productsCollection = client.db("urbanAuraDb").collection("products");
-    const cartsCollection = client.db("urbanAuraDb").collection("carts");
-    const favouritesCollection = client
-      .db("urbanAuraDb")
-      .collection("favourites");
+    // ***===> Database <===***
+    const db = client.db("urbanAuraDb");
+
+    // ***===> Database Collections <===***
+    const productsCollection = db.collection("products");
+    const cartsCollection = db.collection("carts");
+    const favouritesCollection = db.collection("favourites");
+    const ordersCollection = db.collection("orders");
+    const reviewsCollection = db.collection("reviews");
+
+    // ***===> Routes <===***
+    app.use("/products", require("./routes/products")(productsCollection));
+    app.use("/carts", require("./routes/carts")(cartsCollection));
+    app.use(
+      "/favourites",
+      require("./routes/favourites")(favouritesCollection)
+    );
+    app.use(
+      "/orders",
+      require("./routes/orders")(ordersCollection, cartsCollection)
+    );
+    app.use("/reviews", require("./routes/reviews")(reviewsCollection));
+
     const paymentsCollection = client.db("urbanAuraDb").collection("payments");
-    const reviewsCollection = client.db("urbanAuraDb").collection("reviews");
 
     // ***===> JWT Token API <===***
     app.post("/jwt", (req, res) => {
@@ -72,7 +69,7 @@ async function run() {
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const adminEmail = "arthurmorgan@red.com";
+      const adminEmail = "robertdowny@gmail.com";
       if (email !== adminEmail) {
         return res
           .status(403)
@@ -101,324 +98,6 @@ async function run() {
       }
     });
 
-    // ***===> Products Collection API's <===***
-
-    // Get all products and category wise products
-    app.get("/products", async (req, res) => {
-      try {
-        const category = req.query.category;
-        const sortBy = req.query.sortBy;
-        const query = category ? { category: category } : {};
-
-        if (sortBy === "asc") {
-          const result = await productsCollection
-            .find(query)
-            .sort({ _id: 1 })
-            .toArray();
-          return res.send(result);
-        } else if (sortBy === "desc") {
-          const result = await productsCollection
-            .find(query)
-            .sort({ _id: -1 })
-            .toArray();
-          return res.send(result);
-        } else {
-          const result = await productsCollection.find(query).toArray();
-          return res.send(result);
-        }
-      } catch (err) {
-        console.log("Error fetching products:", err);
-        res.status(500).send("Internal Server Error");
-      }
-    });
-
-    // Get products by search
-    app.get("/search/:key", async (req, res) => {
-      try {
-        const searchValue = req.params.key;
-        const query = {
-          $or: [
-            { category: { $regex: searchValue, $options: "i" } },
-            { title: { $regex: searchValue, $options: "i" } },
-            { sub_title: { $regex: searchValue, $options: "i" } },
-          ],
-        };
-        const result = await productsCollection.find(query).toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("Error searching products:", err);
-        res.status(500).send("Internal Server Error");
-      }
-    });
-
-    // Get a single product
-    app.get("/products/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        // Validate ObjectId
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).json({ error: "Invalid product ID" });
-        }
-        const query = { _id: new ObjectId(id) };
-        const result = await productsCollection.findOne(query);
-
-        if (!result) {
-          return res.status(404).json({ error: "Product not found" });
-        }
-
-        res.send(result);
-      } catch (err) {
-        console.log("Error fetching single product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Add a new product
-    app.post("/products", async (req, res) => {
-      try {
-        const newProduct = req.body;
-        const result = await productsCollection.insertOne(newProduct);
-        res.send(result);
-      } catch (err) {
-        console.log("Error adding new product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Update a single product
-    app.put("/products/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const updatedProduct = req.body;
-        const result = await productsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedProduct }
-        );
-        res.send(result);
-      } catch (err) {
-        console.log("Error updating product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Delete a single product from the products
-    app.delete("/products/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await productsCollection.deleteOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log("Error deleting product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // ***===> Cart Collection API's <===***
-
-    // Get user cart items
-    app.get("/cart", verifyJWT, async (req, res) => {
-      try {
-        const userEmail = req.query.userEmail;
-
-        if (!userEmail) {
-          return res.status(400).json({ message: "user email is required!" });
-        }
-
-        const decodedEmail = req.decoded.email;
-        if (userEmail !== decodedEmail) {
-          return res
-            .status(403)
-            .send({ error: true, message: "forbidden access" });
-        }
-
-        const query = { user_email: userEmail };
-        const result = await cartsCollection.find(query).toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("Error getting user cart items product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Add a item to the cart or update the quantity if exists
-    app.put("/cart", async (req, res) => {
-      try {
-        const item = req.body;
-        const { product_id, user_email, quantity } = item;
-
-        const existingItem = await cartsCollection.findOne({
-          product_id,
-          user_email,
-        });
-
-        if (existingItem) {
-          const newQuantity = existingItem.quantity + quantity;
-          const filter = { product_id, user_email };
-          const updateDoc = {
-            $set: { quantity: newQuantity },
-          };
-          const result = await cartsCollection.updateOne(filter, updateDoc);
-          res.send(result);
-        } else {
-          const result = await cartsCollection.insertOne(item);
-          res.send(result);
-        }
-      } catch (err) {
-        console.log("Error adding new cart items:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Update the quantity of a cart item
-    app.patch("/cart_quantity", async (req, res) => {
-      try {
-        const { product_id, user_email, quantity } = req.body;
-
-        const filter = { product_id: product_id, user_email };
-        const updateDoc = { $set: { quantity: quantity } };
-        const result = await cartsCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      } catch (err) {
-        console.log("Error updating quantity of cart items:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Delete a item from the cart
-    app.delete("/cart", async (req, res) => {
-      try {
-        const { product_id, email } = req.body;
-        const query = { product_id: product_id, user_email: email };
-        const result = await cartsCollection.deleteOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log("Error deleting a cart item:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // ***===> Favourite Collection API's <===***
-
-    // Get favourite items of a user
-    app.get("/favourite", verifyJWT, async (req, res) => {
-      try {
-        const userEmail = req.query.userEmail;
-
-        if (!userEmail) {
-          return res.status(400).json({ message: "user email is required" });
-        }
-
-        const decodedEmail = req.decoded.email;
-        if (userEmail !== decodedEmail) {
-          return res
-            .status(403)
-            .send({ error: true, message: "forbidden access" });
-        }
-
-        const query = { user_email: userEmail };
-        const result = await favouritesCollection.find(query).toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("Error getting favourite items:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Save a favourite item only one time
-    app.post("/favourite", async (req, res) => {
-      try {
-        const item = req.body;
-        const query = {
-          user_email: item.user_email,
-          product_id: item.product_id,
-        };
-        const existingItem = await favouritesCollection.findOne(query);
-
-        if (existingItem) {
-          return res.send({ message: "product already exists" });
-        }
-        const result = await favouritesCollection.insertOne(item);
-        res.send(result);
-      } catch (err) {
-        console.log("Error saving a favourite items:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Delete a item from favourite list
-    app.delete("/favourite", async (req, res) => {
-      try {
-        const { product_id, user_email } = req.body;
-        if (!product_id || !user_email) {
-          return res.status(400).json({ error: "id and email is required!" });
-        }
-
-        const query = { product_id: product_id, user_email: user_email };
-        const result = await favouritesCollection.deleteOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log("error deleting a favourite item:", err);
-        res.status(500).json({ error: "internal server error" });
-      }
-    });
-
-    // ***===> Review Collection API's <===***
-
-    // Get all reviews of a product
-    app.get("/reviews", async (req, res) => {
-      try {
-        const { product_id } = req.query;
-        if (!product_id) {
-          return res.status(400).json({ error: "product_id is required" });
-        }
-        const query = { product_id: product_id };
-        const result = await reviewsCollection
-          .find(query)
-          .sort({ date: -1 })
-          .toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("error fetching reviews of a product:", err);
-        res.status(500).send({ error: "Internal Server Error" });
-      }
-    });
-
-    // Post A Review of a user
-    app.post("/review", async (req, res) => {
-      try {
-        const review = req.body;
-        if (!review) {
-          return res.status(400).json({ error: "review data is required" });
-        }
-        const result = await reviewsCollection.insertOne(review);
-        res.send(result);
-      } catch (err) {
-        console.log("error posting a review:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Delete a review from a product
-    app.delete("/review", async (req, res) => {
-      try {
-        const { product_id, email } = req.body;
-
-        if (!product_id || !email) {
-          return res
-            .status(400)
-            .json({ error: "product_id and user data is required" });
-        }
-
-        const query = { product_id: product_id, email: email };
-        const result = await reviewsCollection.deleteOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log("error deleting a review:", err);
-        res.status(500).send({ error: "Internal Server Error" });
-      }
-    });
-
     // Stripe Payment Intent API
     app.post("/create-payment-intent", async (req, res) => {
       try {
@@ -439,58 +118,6 @@ async function run() {
         });
       } catch (err) {
         console.log("error creating payment intent:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // ***===> Payment Collection API's <===***
-
-    // Get all payments of an user
-    app.get("/payments", verifyJWT, async (req, res) => {
-      try {
-        const { email } = req.query;
-
-        if (!email) {
-          return res.status(400).json({ error: "invalid email" });
-        }
-
-        const decodedEmail = req.decoded.email;
-        if (email !== decodedEmail) {
-          return res
-            .status(403)
-            .send({ error: true, message: "forbidden access" });
-        }
-
-        const query = { email: email };
-        const result = await paymentsCollection
-          .find(query)
-          .sort({ date: -1 })
-          .toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("error getting all payments of a user :", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Save successful payments and delete the cart items
-    app.post("/payments", async (req, res) => {
-      try {
-        const payment = req.body;
-        const insertResult = await paymentsCollection.insertOne(payment);
-
-        if (insertResult.insertedId) {
-          const itemIds = payment.items.map((item) => item._id);
-          const deleteResult = await cartsCollection.deleteMany({
-            _id: { $in: itemIds.map((id) => new ObjectId(id)) },
-          });
-
-          res.send({ insertResult, deleteResult });
-        } else {
-          throw new Error("Failed to insert payment");
-        }
-      } catch (err) {
-        console.log("error saving payments and deleting cart items:", err);
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
