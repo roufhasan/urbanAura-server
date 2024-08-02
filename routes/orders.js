@@ -5,7 +5,9 @@ const verifyUser = require("../middlewares/verifyUser");
 module.exports = (ordersCollection, cartsCollection) => {
   const router = express.Router();
 
-  // Get all payments of an user
+  // TODO: Fix the below api  for jwt an user verification.
+
+  // Get all orders of a user
   router.get("/:email", verifyJWT, verifyUser, async (req, res) => {
     try {
       const email = req.params.email;
@@ -21,7 +23,7 @@ module.exports = (ordersCollection, cartsCollection) => {
         .toArray();
       res.send(result);
     } catch (err) {
-      console.log("error getting all payments of a user :", err);
+      console.log("error getting all orders of a user :", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
@@ -31,7 +33,7 @@ module.exports = (ordersCollection, cartsCollection) => {
     try {
       const orderInfo = req.body;
 
-      // Save the payment into the orders collection
+      // Save the orderInfo into the orders collection
       const insertResult = await ordersCollection.insertOne(orderInfo);
 
       if (insertResult.insertedId) {

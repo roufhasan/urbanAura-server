@@ -1,12 +1,12 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { MongoClient, ServerApiVersion } = require("mongodb");
+
 const app = express();
-const stripe = require("stripe")(process.env.PAYMETN_SECRET_KEY);
 const port = process.env.PORT || 5000;
-const verifyJWT = require("./middlewares/verifyJWT");
 
 // middleware
 app.use(cors());
@@ -27,37 +27,42 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Routes import
+const productRoutes = require("./routes/products");
+const reviewRoutes = require("./routes/reviews");
+const cartRoutes = require("./routes/carts");
+const favouriteRoutes = require("./routes/favourites");
+const orderRoutes = require("./routes/orders");
+const adminRoutes = require("./routes/adminOrders");
+const paymentRoutes = require("./routes/payments");
+const userRoutes = require("./routes/users");
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    // ***===> Database <===***
+    // Database
     const db = client.db("urbanAuraDb");
 
-    // ***===> Database Collections <===***
+    // Database Collections
     const productsCollection = db.collection("products");
     const cartsCollection = db.collection("carts");
     const favouritesCollection = db.collection("favourites");
     const ordersCollection = db.collection("orders");
     const reviewsCollection = db.collection("reviews");
 
-    // ***===> Routes <===***
-    app.use("/products", require("./routes/products")(productsCollection));
-    app.use("/carts", require("./routes/carts")(cartsCollection));
-    app.use(
-      "/favourites",
-      require("./routes/favourites")(favouritesCollection)
-    );
-    app.use(
-      "/orders",
-      require("./routes/orders")(ordersCollection, cartsCollection)
-    );
-    app.use("/reviews", require("./routes/reviews")(reviewsCollection));
+    // Routes
+    app.use("/products", productRoutes(productsCollection));
+    app.use("/reviews", reviewRoutes(reviewsCollection));
+    app.use("/carts", cartRoutes(cartsCollection));
+    app.use("/favourites", favouriteRoutes(favouritesCollection));
+    app.use("/orders", orderRoutes(ordersCollection, cartsCollection));
+    app.use("/admin", adminRoutes(ordersCollection));
+    app.use("/users", userRoutes());
+    app.use("/payments", paymentRoutes());
 
-    const paymentsCollection = client.db("urbanAuraDb").collection("payments");
-
-    // ***===> JWT Token API <===***
+    // JWT Token API
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -65,100 +70,6 @@ async function run() {
       });
       res.send({ token });
     });
-
-    // verify admin middleware
-    const verifyAdmin = async (req, res, next) => {
-      const email = req.decoded.email;
-      const adminEmail = "robertdowny@gmail.com";
-      if (email !== adminEmail) {
-        return res
-          .status(403)
-          .send({ error: true, message: "forbidden access" });
-      }
-      next();
-    };
-
-    // ***===> User API <===***
-    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
-      try {
-        const email = req.params.email;
-        const decodedEmail = req.decoded.email;
-
-        if (decodedEmail !== email) {
-          return res.send({ admin: false });
-        }
-
-        const adminEmail = "arthurmorgan@red.com"; // TODO: change the email
-        const isAdmin = email === adminEmail;
-
-        res.send({ admin: isAdmin });
-      } catch (err) {
-        console.log("error getting users:", err);
-        res.status(500).send("Internal Server Error");
-      }
-    });
-
-    // Stripe Payment Intent API
-    app.post("/create-payment-intent", async (req, res) => {
-      try {
-        const { price } = req.body;
-
-        if (!price || typeof price !== "number" || price <= 0) {
-          return res.status(400).json({ error: "invalid price" });
-        }
-
-        const amount = Math.round(price * 100);
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount,
-          currency: "usd",
-          payment_method_types: ["card"],
-        });
-        res.send({
-          clientSecret: paymentIntent.client_secret,
-        });
-      } catch (err) {
-        console.log("error creating payment intent:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // ***===> Admin's API's <===***
-    // Get all payments
-    app.get("/admin/payments", verifyJWT, verifyAdmin, async (req, res) => {
-      try {
-        const result = await paymentsCollection
-          .find()
-          .sort({ date: -1 })
-          .toArray();
-        res.send(result);
-      } catch (err) {
-        console.log("error getting all payments:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    // Update payment order status
-    app.put(
-      "/admin/payments/:orderId/status",
-      verifyJWT,
-      verifyAdmin,
-      async (req, res) => {
-        try {
-          const { orderId } = req.params;
-          const { status } = req.body;
-
-          const result = await paymentsCollection.updateOne(
-            { _id: new ObjectId(orderId) },
-            { $set: { status: status } }
-          );
-
-          res.send(result);
-        } catch (err) {
-          console.lg("error updating order status:", err);
-          res.status(500).json({ message: "Internal Server Error" });
-        }
-      }
-    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
