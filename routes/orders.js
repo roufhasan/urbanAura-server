@@ -5,8 +5,6 @@ const verifyUser = require("../middlewares/verifyUser");
 module.exports = (ordersCollection, cartsCollection) => {
   const router = express.Router();
 
-  // TODO: Fix the below api  for jwt an user verification.
-
   // Get all orders of a user
   router.get("/:email", verifyJWT, verifyUser, async (req, res) => {
     try {

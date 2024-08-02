@@ -96,7 +96,6 @@ module.exports = (productsCollection) => {
     }
   });
 
-  // TODO: in the front end search api should look like this http:localhost:500/products/search/:key
   // Get products by search
   router.get("/search/:key", async (req, res) => {
     try {
