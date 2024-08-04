@@ -12,8 +12,11 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// TODO: remove local mongodb with mongodb atlas
+const uri = "mongodb://localhost:27017";
+
 // MongoDB Atlas Conntection URL
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.gc5eeuu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -30,7 +33,7 @@ const reviewRoutes = require("./routes/reviews");
 const cartRoutes = require("./routes/carts");
 const favouriteRoutes = require("./routes/favourites");
 const orderRoutes = require("./routes/orders");
-const adminRoutes = require("./routes/adminOrders");
+const adminRoutes = require("./routes/admin");
 const paymentRoutes = require("./routes/payments");
 const userRoutes = require("./routes/users");
 
@@ -55,7 +58,7 @@ async function run() {
     app.use("/carts", cartRoutes(cartsCollection));
     app.use("/favourites", favouriteRoutes(favouritesCollection));
     app.use("/orders", orderRoutes(ordersCollection, cartsCollection));
-    app.use("/admin", adminRoutes(ordersCollection));
+    app.use("/admin", adminRoutes(ordersCollection, productsCollection));
     app.use("/users", userRoutes());
     app.use("/payments", paymentRoutes());
 

@@ -96,47 +96,53 @@ Here's a brief overview of the available API endpoints:
 
 ### Products
 
-- `GET /api/products`: Get all products
+- `GET /products`: Get all products
 
-- `POST /api/products`: Add a new product
+- `Get /products/:id`: Get a single product
 
-- `PUT /api/products/:id`: Update a product
-
-- `DELETE /api/products/:id`: Delete a product
+- `Get /search/:key`: Get products that match the search key
 
 ### Reviews
 
-- `POST /api/products/:id/review`: Add a review to a product
+- `GET /reviews?product_id={id}`: Get all reviews of a product
 
-### Carts
+- `POST /reviews`: Post a review for a product (secured with JWT & User verification)
 
-- `GET /api/carts`: Get user's cart
+- `DELETE /reviews`: Delete a review from a product (secured with JWT & User verification)
 
-- `POST /api/carts`: Add an item to the cart
+### Carts (secured with JWT & User verification)
 
-- `PUT /api/carts/:id`: Update cart item quantity
+- `GET /carts?userEmail={email}`: Get the cart items for the specified user
 
-- `DELETE /api/carts/:id`: Remove an item from the cart
+- `PUT /carts`: Add a new item to the cart or update the quantity of an existing item
 
-### Favorites
+- `PATCH /carts/cart_quantity`: Update the quantity of a specific item in the cart
 
-- `GET /api/favorites`: Get user's favorite products
+- `DELETE /carts`: Delete a specific item from the cart
 
-- `POST /api/favorites`: Add a product to favorites
+### Favorites (secured with JWT & User verification)
 
-- `DELETE /api/favorites/:id`: Remove a product from favorites
+- `GET /favourites?userEmail={email}`: Get the favourite items for the specified user
 
-### Payments
+- `POST /favourites`: Add a new item to the user's favourites.
 
-- `POST /api/payments`: Process a payment
+- `DELETE /favourites`: Delete an item from the user's favourites
 
-### Admin
+### Payments (secured with JWT & User verification)
 
-- `GET /api/admin/orders`: Get all orders
+- `POST /payments/create-payment-intent`: Creates a payment intent with Stripe for processing payments
 
-- `PUT /api/admin/orders/:id`: Update order status
+### Admin (secured with JWT & Admin verification)
 
-- `POST /api/admin/products`: Add a new product
+- `GET /admin/orders`: Get a list of all orders
+
+- `PUT /admin/orders/:id/status`: Update the status of a specific order
+
+- `POST /admin/products`: Add a new product
+
+- `PUT admin/products`: Update details of an existing product
+
+- `DELETE admin/products/:id`: Delete a specific product from the products
 
 ## Contact
 

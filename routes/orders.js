@@ -26,7 +26,7 @@ module.exports = (ordersCollection, cartsCollection) => {
     }
   });
 
-  // Save successful payments and delete the cart items
+  // Save successful paymented order and delete the cart items
   router.post("/", verifyJWT, verifyUser, async (req, res) => {
     try {
       const orderInfo = req.body;

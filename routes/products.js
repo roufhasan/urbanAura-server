@@ -55,47 +55,6 @@ module.exports = (productsCollection) => {
     }
   });
 
-  // Add a new product
-  router.post("/", async (req, res) => {
-    try {
-      const newProduct = req.body;
-      const result = await productsCollection.insertOne(newProduct);
-      res.send(result);
-    } catch (err) {
-      console.log("Error adding new product:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-  // Update a single product
-  router.put("/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      const updatedProduct = req.body;
-      const result = await productsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updatedProduct }
-      );
-      res.send(result);
-    } catch (err) {
-      console.log("Error updating product:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-  // Delete a single product from the products
-  router.delete("/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await productsCollection.deleteOne(query);
-      res.send(result);
-    } catch (err) {
-      console.log("Error deleting product:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
   // Get products by search
   router.get("/search/:key", async (req, res) => {
     try {
