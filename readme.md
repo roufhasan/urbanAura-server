@@ -96,7 +96,7 @@ Here's a brief overview of the available API endpoints:
 
 ### Products
 
-- `GET /products`: Get all products
+- `GET /products`: Get all products. Optionally, you can filter by `category` and sort by `sortBy` query parameters with `sortBy=asc` for ascending order or `sortBy=desc` for descending order (e.g., `GET /products?category=living&sortBy=asc` for ascending order)
 
 - `Get /products/:id`: Get a single product
 
@@ -140,9 +140,9 @@ Here's a brief overview of the available API endpoints:
 
 - `POST /admin/products`: Add a new product
 
-- `PUT admin/products`: Update details of an existing product
+- `PUT /admin/products`: Update details of an existing product
 
-- `DELETE admin/products/:id`: Delete a specific product from the products
+- `DELETE /admin/products/:id`: Delete a specific product from the products
 
 ## Contact
 
