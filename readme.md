@@ -75,11 +75,6 @@ npm install
 
 Create a .env file in the root directory and add your MongoDB Database Username, Password, Stripe payment and Access token secret key.
 
-```sh
-cd urbanAura-server
-npm install
-```
-
 4. **Start the server**
 
 ```sh
